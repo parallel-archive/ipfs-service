@@ -1,0 +1,59 @@
+version: '3.4'
+
+# volumes:
+#   ipfs:
+#     driver_opts:
+#       # Filesystem configuration
+#       backup_policy: ENABLED
+#       lifecycle_policy: AFTER_14_DAYS
+#       performance_mode: maxIO
+#       throughput_mode: provisioned
+#       provisioned_throughput: 1
+
+services:
+
+  ipfs:
+    container_name: ipfs
+    image: ipfs/go-ipfs:latest
+    expose:
+      - 5001 # API
+    ports:
+    - "4001:4001" # ipfs swarm - expose if needed/wanted
+    # - "8080:8080" # ipfs gateway - expose if needed/wanted
+    volumes:
+      - ./ipfs:/data/ipfs
+      
+  cluster:
+    container_name: cluster
+    image: ipfs/ipfs-cluster:latest
+    depends_on:
+      - ipfs
+    environment:
+      CLUSTER_PEERNAME: cluster
+      CLUSTER_SECRET: ${CLUSTER_SECRET} # From shell variable if set
+      CLUSTER_IPFSHTTP_NODEMULTIADDRESS: /dns4/ipfs/tcp/5001
+      # CLUSTER_CRDT_TRUSTEDPEERS: '*' # Trust all peers in Cluster
+      CLUSTER_RESTAPI_HTTPLISTENMULTIADDRESS: /ip4/0.0.0.0/tcp/9094 # Expose API
+      CLUSTER_MONITORPINGINTERVAL: 2s # Speed up peer discovery
+    expose:
+      - 9094 #API
+    ports:
+          # Open API port (allows ipfs-cluster-ctl usage on host)
+          # The cluster swarm port would need  to be exposed if this container
+          # was to connect to cluster peers on other hosts.
+          # But this is just a testing cluster.
+          - "9096:9096" # Cluster IPFS Proxy endpoint
+    volumes:
+      - ./ipfs:/data/ipfs-cluster
+
+  nodeserver:
+      restart: on-failure
+      environment:
+        API_PASSWORD: ${API_PASSWORD}
+      build:
+          context: ./app
+      expose:
+          - 5000
+      ports:
+          - "80:80"
+

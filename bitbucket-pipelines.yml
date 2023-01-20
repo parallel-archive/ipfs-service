@@ -1,0 +1,48 @@
+# This is an example Starter pipeline configuration
+# Use a skeleton to build, test and deploy using manual and parallel steps
+# -----
+# You can specify a custom docker image from Docker Hub as your build environment.
+
+image: node:16.14.0
+
+pipelines:
+  branches:
+    master:
+      - step:
+          name: 'Build codeandsoda osa-ipfs-service project'
+          caches:
+            - node
+          script:
+            - cd app/
+            - npm install
+            - tar -czvf osa-ipfs-service.tar.gz ./node_modules index.js package.json 
+          artifacts:
+            - app/osa-ipfs-service.tar.gz
+        # The following deployment steps will be executed for each pipeline run. To configure your steps and conditionally deploy see https://support.atlassian.com/bitbucket-cloud/docs/configure-bitbucket-pipelinesyml/
+      - step:
+          name: 'Deploy codeandsoda osa-ipfs-service project'
+          deployment: production
+          script:
+            - scp -oStrictHostKeyChecking=no -oCheckHostIP=no -oUserKnownHostsFile=/dev/null app/osa-ipfs-service.tar.gz ubuntu@$OSA_IPFS_EC2_PROD:/home/ubuntu
+            - ssh -oStrictHostKeyChecking=no -oCheckHostIP=no -oUserKnownHostsFile=/dev/null ubuntu@$OSA_IPFS_EC2_PROD -t sudo tar xzfv osa-ipfs-service.tar.gz -C node-app/
+            - ssh -oStrictHostKeyChecking=no -oCheckHostIP=no -oUserKnownHostsFile=/dev/null ubuntu@$OSA_IPFS_EC2_PROD -t pm2 restart node-app
+    develop:
+      - step:
+          name: 'Build codeandsoda osa-ipfs-service project'
+          caches:
+            - node
+          script:
+            - cd app/
+            - npm install
+            - tar -czvf osa-ipfs-service.tar.gz ./node_modules index.js package.json 
+          artifacts:
+            - app/osa-ipfs-service.tar.gz
+        # The following deployment steps will be executed for each pipeline run. To configure your steps and conditionally deploy see https://support.atlassian.com/bitbucket-cloud/docs/configure-bitbucket-pipelinesyml/
+      - step:
+          name: 'Deploy codeandsoda osa-ipfs-service project'
+          deployment: staging
+          script:
+            - scp -oStrictHostKeyChecking=no -oCheckHostIP=no -oUserKnownHostsFile=/dev/null app/osa-ipfs-service.tar.gz ec2-user@$OSA_IPFS_EC2:/home/ec2-user
+            - ssh -oStrictHostKeyChecking=no -oCheckHostIP=no -oUserKnownHostsFile=/dev/null ec2-user@$OSA_IPFS_EC2 -t sudo tar xzfv osa-ipfs-service.tar.gz -C node-app/
+            - ssh -oStrictHostKeyChecking=no -oCheckHostIP=no -oUserKnownHostsFile=/dev/null ec2-user@$OSA_IPFS_EC2 -t pm2 restart node-app
+      
